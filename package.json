@@ -1,0 +1,16 @@
+{
+  "name": "@alphatr/publicsuffix",
+  "version": "1.0.0",
+  "description": "The Public Suffix List",
+  "main": "index.js",
+  "author": {
+    "name": "AlphaTr",
+    "email": "alphatr@alphatr.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@alphatr/eslint-config-node": "^1.1.0",
+    "eslint": "^4.19.1",
+    "urllib": "^2.27.0"
+  }
+}
