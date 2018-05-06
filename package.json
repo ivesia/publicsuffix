@@ -1,6 +1,6 @@
 {
   "name": "@alphatr/publicsuffix",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The Public Suffix List",
   "main": "index.js",
   "author": {

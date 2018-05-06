@@ -6,6 +6,7 @@ const debug = function debug() {
     // console.log(...msg);
 };
 
+// bad case: aliyun.mysql, localhost, xxx.test
 // Transform list in regexps
 (function transform() {
     for (let index = 0, len = list.reject.length; index < len; index++) {
