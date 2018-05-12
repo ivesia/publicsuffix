@@ -6,6 +6,7 @@ const urllib = require('urllib');
 const comment = `/**
  * 通用域名前缀列表
  * 数据来自 https://publicsuffix.org/list/
+ * 移除所有一级前缀
  * @update: {date}
  */
 `;
@@ -40,7 +41,9 @@ const cleanupList = function cleanupList(lines) {
             continue;
         }
 
-        result.accept.push(line);
+        if (line.indexOf('.') > 0) {
+            result.accept.push(line);
+        }
     }
 
     return result;

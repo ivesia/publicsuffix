@@ -1,116 +1,63 @@
 const list = require('./publicsuffix-list');
 
-const regList = {reject: [], wildcard: [], accept: []};
-
-const debug = function debug() {
-    // console.log(...msg);
+const rejectExist = function rejectExist(domain) {
+    return list.reject.some(item => item.replace(/^!/, '') === domain);
 };
 
-// bad case: aliyun.mysql, localhost, xxx.test
-// Transform list in regexps
-(function transform() {
-    for (let index = 0, len = list.reject.length; index < len; index++) {
-        const suffix = list.reject[index].replace(/\./g, '\\.');
-        regList.reject.push(new RegExp(`(.+\\.|)(${suffix})$`, 'i'));
-    }
-
-    for (let index = 0, len = list.wildcard.length; index < len; index++) {
-        const suffix = list.wildcard[index].replace(/\./g, '\\.');
-        regList.wildcard.push(new RegExp(`(.+\\.|)((?:[^\\.]+\\.|)[^\\.]+\\.${suffix})$`, 'i'));
-    }
-
-    for (let index = 0, len = list.accept.length; index < len; index++) {
-        const suffix = list.accept[index].replace(/\./g, '\\.');
-        regList.accept.push(new RegExp(`(.+\\.|)((?:[^\\.]+\\.|)${suffix})$`, 'i'));
-    }
-}());
-
-const findFirst = function findFirst(list, domain) {
-    const length = list.length;
-    for (let index = 0; index < length; index++) {
-        const matches = list[index].exec(domain);
-        if (matches) {
-            debug('found first with', list[index]);
-            return matches.slice(1);
+const findLongest = function findLongest(domain) {
+    let finded = '';
+    list.accept.forEach(item => {
+        const index = `.${domain}`.indexOf(`.${item}`);
+        if (index < 0 || index !== domain.length - item.length) {
+            return;
         }
-    }
-};
 
-const findLongest = function findLongest(list, domain) {
-    const results = [];
-    const length = list.length;
-
-    for (let index = 0; index < length; index++) {
-        const matches = list[index].exec(domain);
-        if (matches) {
-            results.push(matches.slice(1));
+        if (finded.split('.').length < item.split('.').length) {
+            finded = item;
         }
-    }
+    });
 
-    debug('longest matches', results);
+    list.wildcard.forEach(item => {
+        const index = domain.indexOf(item.replace(/^\*/, ''));
+        if (index <= 0 || index !== domain.length - item.length + 1) {
+            return;
+        }
 
-    if (results.length > 0) {
-        results.sort((item, other) => other[1].length - item[1].length);
-        return results[0];
-    }
+        if (!finded || finded.split('.').length < item.split('.').length - 1) {
+            const itemReg = item.replace(/\\./g, '\\.').replace(/^\*/, '[^.]+');
+            const result = new RegExp(`${itemReg}$`, 'i').exec(domain);
+            if (result && !rejectExist(result[0])) {
+                finded = result[0];
+            }
+        }
+    });
 
-    return null;
+    return finded;
 };
 
 const extract = function extract(domain) {
-    let result = '';
-
-    if (/^\d+\.\d+\.\d+\.\d+$/.test(domain)) {
-        return ['', domain];
+    if (!domain) {
+        return [domain, false];
     }
 
+    domain = domain.toLowerCase();
+
+    // IPv4, TODO: support IPv6
+    if (/^(\d+\.){3}\d+$/.test(domain)) {
+        return [domain, false];
+    }
+
+    if (domain.indexOf('.') < 0) {
+        return [domain, false];
+    }
+
+    let result = findLongest(domain);
     if (!result) {
-        debug('try reject');
-        result = findFirst(regList.reject, domain);
+        const matches = /([^.]+)$/.exec(domain);
+        result = matches[1] || domain;
     }
 
-    if (!result) {
-        debug('try accept');
-        result = findLongest(regList.accept, domain);
-
-        if (result && result[0]) {
-            const fixme = result[0].split(/([^.]+\.)$/);
-            result[0] = fixme[0];
-            result[1] = fixme[1] + result[1];
-        }
-    }
-
-    if (!result) {
-        debug('try wildcard');
-        result = findFirst(regList.wildcard, domain);
-
-        if (result && result[0]) {
-            const fixme = result[0].split(/([^.]+\.)$/);
-            result[0] = fixme[0];
-            result[1] = fixme[1] + result[1];
-        }
-    }
-
-    if (!result) {
-        debug('set default');
-        result = /^(.*)([^.]+\.[^.]+)$/.exec(domain);
-        result.shift();
-    }
-
-    debug('result', result);
-    return result;
+    return [result, result !== domain.replace(/^\./, '')];
 };
 
-const extractURL = function extractURL(str) {
-    const result = /^(\s*[a-z]+:(?:\/\/)?(?:[^@:]+(?::[^@:]+)?@)?|)([^/:]+)(.*)$/.exec(str).slice(1);
-
-    debug('split', result);
-
-    const domain = extract(result[1]);
-    result[0] += domain[0];
-    result[1] = domain[1];
-
-    return result;
-};
-
-module.exports = {extract, extractURL};
+module.exports = {extract};
